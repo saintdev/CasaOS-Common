@@ -1,4 +1,4 @@
-package systemctl
+package init_system
 
 import (
 	"context"
@@ -45,12 +45,9 @@ var (
 	ErrorUnknown = errors.New("unknown error")
 )
 
-type Service struct {
-	Name    string
-	Running bool
-}
+type SystemCtl struct{}
 
-func ListServices(pattern string) ([]Service, error) {
+func (s *SystemCtl) ListServices(pattern string) ([]InitService, error) {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -79,14 +76,14 @@ func ListServices(pattern string) ([]Service, error) {
 		files = _files
 	}
 
-	services := make([]Service, 0, len(files))
+	services := make([]InitService, 0, len(files))
 
 	for _, file := range files {
 		serviceName := filepath.Base(file.Path)
 
-		running, err := IsServiceRunning(serviceName)
+		running, err := s.IsServiceRunning(serviceName)
 
-		services = append(services, Service{
+		services = append(services, InitService{
 			Name:    serviceName,
 			Running: err == nil && running,
 		})
@@ -95,7 +92,7 @@ func ListServices(pattern string) ([]Service, error) {
 	return services, nil
 }
 
-func IsServiceEnabled(name string) (bool, error) {
+func (s *SystemCtl) IsServiceEnabled(name string) (bool, error) {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -119,7 +116,7 @@ func IsServiceEnabled(name string) (bool, error) {
 	return false, nil
 }
 
-func IsServiceRunning(name string) (bool, error) {
+func (s *SystemCtl) IsServiceRunning(name string) (bool, error) {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -139,7 +136,7 @@ func IsServiceRunning(name string) (bool, error) {
 	return property.Value.Value() == "active", nil
 }
 
-func EnableService(name string) error {
+func (s *SystemCtl) EnableService(name string) error {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -163,13 +160,13 @@ func EnableService(name string) error {
 	}
 
 	if property.Value.Value() != "active" {
-		return StartService(name)
+		return s.StartService(name)
 	}
 
 	return nil
 }
 
-func DisableService(name string) error {
+func (s *SystemCtl) DisableService(name string) error {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -188,7 +185,7 @@ func DisableService(name string) error {
 	}
 
 	if properties["ActiveState"] == "active" {
-		return StopService(name)
+		return s.StopService(name)
 	}
 
 	_, err = conn.DisableUnitFilesContext(ctx, []string{name}, false)
@@ -199,7 +196,7 @@ func DisableService(name string) error {
 	return nil
 }
 
-func StartService(name string) error {
+func (s *SystemCtl) StartService(name string) error {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -230,7 +227,7 @@ func StartService(name string) error {
 	return nil
 }
 
-func StopService(name string) error {
+func (s *SystemCtl) StopService(name string) error {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -261,7 +258,7 @@ func StopService(name string) error {
 	return nil
 }
 
-func ReloadDaemon() error {
+func (s *SystemCtl) Reload() error {
 	// connect to systemd
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
