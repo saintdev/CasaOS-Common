@@ -100,6 +100,10 @@ func RcService(name string, command serviceCmd) ([]byte, error) {
 	if command != cmdList {
 		args = append(args, "--quiet")
 	}
+
+	// Strip the ".service" suffix if the service name got passed with it.
+	name, _ = strings.CutSuffix(name, ".service")
+
 	switch command {
 	case cmdStart:
 		args = append(args, name, "start")
